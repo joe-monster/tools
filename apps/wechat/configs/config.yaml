@@ -1,0 +1,13 @@
+
+http_port: '8080'
+rpc_port: '8081'
+
+wechat:
+    appid: 'lkdsjflkjsdjf'
+    secret: 'lsdjkflsdjflf'
+
+log:
+    dir: './log/'
+    suffix: '.log.%Y%m%d'
+    cut_days: 1
+    file_save_days: 7
