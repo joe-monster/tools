@@ -3,8 +3,8 @@ http_port: '8080'
 rpc_port: '8081'
 
 wechat:
-    appid: 'lkdsjflkjsdjf'
-    secret: 'lsdjkflsdjflf'
+    appid: 'wxf03281710c7b7006'
+    secret: 'e09afa1e82be63284c903d69561111c5'
 
 log:
     dir: './log/'

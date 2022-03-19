@@ -1,0 +1,1 @@
+time="2022-03-09T11:24:46+08:00" level=info msg="app:tools.wechat.web info:[54_9VTj4bhDkty-CQSuslhAlIjvnk2DggcziL9tWkoedO9lDkaolK7AHb3Ivs9KZPmNEMwcij7yPajowCeZmE_RnxdfiuT0hGGDvMDrGdjMNDwXP-F0aRlEVza7bv_0uSQ7E5-_cqZUr9QPvGhfBNIjACAXJE 7200] \n" func="tools/internal/pkg/logger.(*LogClient).Info" file="/Users/qiaoyixuan/golang_project/tools/internal/pkg/logger/init.go:116"

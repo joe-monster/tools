@@ -2,6 +2,8 @@ syntax = "proto3";
 
 package wechat.rpc.v1;
 
+import "google/api/annotations.proto";
+
 option go_package = "apps/wechat/api/rpc/v1";
 
 message GetUserListRequest {
@@ -19,5 +21,10 @@ message GetUserListResponse {
 
 service User {
   rpc RpcGetUserList(GetUserListRequest) returns (GetUserListResponse) {}
+  rpc HttpGetUserList(GetUserListRequest) returns (GetUserListResponse) {
+    option (google.api.http) = {
+      get: "/v1/user/list"
+    };
+  }
 }
 
