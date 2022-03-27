@@ -6,6 +6,7 @@ import (
 	"tools/apps/sockettest/proto"
 )
 
+//client
 func main() {
 	tcpaddr, err := net.ResolveTCPAddr("tcp", "127.0.0.1:8282")
 

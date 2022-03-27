@@ -10,10 +10,7 @@ import (
 	"tools/apps/sockettest/proto"
 )
 
-/*
-常用的高级协议一般根据业务场景，使用3种粘包处理策略：分隔符分隔、定长分隔、消息头定义包长度分隔，goim用的第三种，下边是作业2的简单实现，没考虑性能之类
-*/
-
+//server
 func main() {
 	tcpaddr, err := net.ResolveTCPAddr("tcp", "127.0.0.1:8282")
 	listener, err := net.ListenTCP("tcp", tcpaddr)
