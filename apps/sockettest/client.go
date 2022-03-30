@@ -17,23 +17,25 @@ func main() {
 	defer conn.Close()
 
 	msg := []string{
-		"hello world!",
-		"i love you!",
-		"fuck you!",
+		"abc",                                  //用于构造小于一个tcp包
+		"1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ", //用于构造大于1500字节的包
 	}
 
-	for i := 0; i < 3; i++ { //3遍
-		for _, v := range msg {
-			bData, err := proto.Encode([]byte(v))
-			if err != nil {
-				log.Println(err)
-				continue
-			}
+	for _, v := range msg {
+		vv := []byte{}
+		for j := 0; j < 200; j++ {
+			vv = append(vv, []byte(v)...)
+		}
 
-			if _, err := conn.Write(bData); err != nil {
-				log.Println(err)
-				continue
-			}
+		bData, err := proto.Encode(vv)
+		if err != nil {
+			log.Println(err)
+			continue
+		}
+
+		if _, err := conn.Write(bData); err != nil {
+			log.Println(err)
+			continue
 		}
 	}
 

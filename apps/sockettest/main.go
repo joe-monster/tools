@@ -35,30 +35,36 @@ func handleConn(conn net.Conn) {
 		conn.Close()
 	}()
 
-	//将数据流做成结构体数据，解决粘包问题
-	reader := bufio.NewReader(conn)
+	reader := bufio.NewReaderSize(conn, 4096) //弄一个4M的字节缓冲池
 	for {
 
-		peek, err := reader.Peek(4)
+		peek, err := reader.Peek(4) //前4个字节是单个协议包大小
 		if err != nil {
-			if err != io.EOF {
-				log.Println(err)
-				continue
-			} else {
+			if err == io.EOF { //客户端关闭连接
 				break
 			}
+			log.Println(err)
+			continue
 		}
 
 		buffer := bytes.NewBuffer(peek)
 		var length int32
 		err = binary.Read(buffer, binary.BigEndian, &length)
-		if err != nil { //前4个字节是整个包大小，转数字出错
+		if err != nil { //字节转数字出错
 			log.Println(err)
 			break
 		}
 
-		if int32(reader.Buffered()) < length { //数据不够一个包大小
+		if length > 4096 { //一个tcp包如果超过4096字节，则直接丢弃
+			reader.Reset(conn)
 			continue
+		}
+
+		for { //数据不够一个自定义协议包大小，一直等待直到收到完整的一个包
+			if int32(reader.Buffered()) >= length {
+				break
+			}
+			log.Println(reader.Buffered())
 		}
 
 		data := make([]byte, length)
