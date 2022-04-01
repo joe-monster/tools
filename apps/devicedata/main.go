@@ -15,10 +15,12 @@ import (
 )
 
 const MinuteStrFormat = "2006-01-02 15:04"
+const FilePath = "./data"
 
 var (
-	Addr   = flag.String("addr", "", "format: 192.168.8.208")
-	Minute = flag.String("minute", "", "format: "+MinuteStrFormat)
+	Addr   = flag.String("addr", "", "服务器地址，IP或域名")
+	Minute = flag.String("minute", "", "要查询的某一分钟，格式: yyyy-mm-dd\\ hh:mm")
+	Status = flag.String("status", "0", "1表示只获取状态正常的传感器 0表示获取所有传感器，默认0")
 )
 
 func init() {
@@ -30,23 +32,44 @@ func init() {
 
 func main() {
 
+	t, err := time.ParseInLocation(MinuteStrFormat, *Minute, time.Local)
+	if err != nil {
+		panic(err)
+	}
+
 	deviceIds, err := getDeviceIds()
 	if err != nil {
 		panic(fmt.Sprintf("%+v", err))
 	}
+	log.Println(deviceIds)
+
+	//创建数据保存目录
+	b, err := pathExists(FilePath)
+	if err != nil {
+		panic(err)
+	}
+	if !b {
+		if err := os.Mkdir(FilePath, os.ModePerm); err != nil {
+			panic(err)
+		}
+	}
+
+	start := fmt.Sprintf("%d", t.Unix()*1e3)
+	end := fmt.Sprintf("%d", t.Add(1*time.Minute).Unix()*1e3)
 
 	var wg sync.WaitGroup
 	wg.Add(len(deviceIds))
 	for _, id := range deviceIds {
 		go func(id string) {
 			defer wg.Done()
-			if err := makeData(id); err != nil {
+			if err := makeData(id, start, end); err != nil {
 				log.Printf("%+v", err)
 			}
 		}(id)
 	}
 	wg.Wait()
 
+	log.Println("ok!")
 	os.Exit(0)
 }
 
@@ -54,7 +77,9 @@ func getDeviceIds() ([]string, error) {
 	params := url.Values{}
 	params.Set("Page", "1")
 	params.Set("Limit", "10000")
-	params.Set("Status", "11") //11是正常的状态码
+	if *Status == "1" {
+		params.Set("Status", "11") //11是正常的状态码
+	}
 
 	var u url.URL
 	u.Scheme = "http"
@@ -132,7 +157,7 @@ func getDeviceIds() ([]string, error) {
 	return ids, nil
 }
 
-func makeData(id string) error {
+func makeData(id, start, end string) error {
 	var u url.URL
 	u.Scheme = "http"
 	u.Host = *Addr
@@ -141,14 +166,8 @@ func makeData(id string) error {
 	params := url.Values{}
 	params.Set("sensorid", id)
 	params.Set("type", "audio")
-
-	t, err := time.Parse(MinuteStrFormat, *Minute)
-	if err != nil {
-		return errors.Wrap(err, *Minute)
-	}
-
-	params.Set("from", fmt.Sprintf("%d", t.Unix()*1e3))
-	params.Set("to", fmt.Sprintf("%d", t.Add(1*time.Minute).Unix()*1e3))
+	params.Set("from", start)
+	params.Set("to", end)
 
 	u.RawQuery = params.Encode()
 
@@ -159,21 +178,47 @@ func makeData(id string) error {
 		defer resp.Body.Close()
 	}
 	if err != nil {
-		return err
+		return errors.WithMessage(err, id)
 	}
 
 	//处理状态码
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusBadRequest {
-		return errors.New(fmt.Sprintf("http status code %d", resp.StatusCode))
+		return errors.New(fmt.Sprintf("%s: http status code %d", id, resp.StatusCode))
 	}
 
 	//处理返回结果
 	byteData, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return errors.Wrap(err, fmt.Sprintf("resp.Body:%v", resp.Body))
+		return errors.Wrap(err, fmt.Sprintf("%s: resp.Body:%v", id, resp.Body))
 	}
 
-	log.Println(string(byteData))
+	contentType := resp.Header.Get("Content-Type")
+	if contentType != "audio/wav" {
+		return errors.New(id + ": " + string(byteData))
+	}
+
+	//创建文件
+	fileName := FilePath + "/" + id + ".wav"
+
+	//b, err := pathExists(fileName)
+	//if err != nil {
+	//	return errors.Wrap(err, id)
+	//}
+	//
+	//if b {
+	//	//删除文件
+	//	if err := os.Remove(fileName); err != nil {
+	//		return errors.Wrap(err, id)
+	//	}
+	//}
+
+	file, err := os.Create(fileName)
+	defer file.Close()
+
+	_, err = file.Write(byteData)
+	if err != nil {
+		return errors.Wrap(err, id)
+	}
 
 	return nil
 }
@@ -201,4 +246,15 @@ func httpGet(url string, headers map[string]string) (*http.Response, error) {
 	}
 
 	return resp, nil
+}
+
+func pathExists(path string) (bool, error) {
+	_, err := os.Stat(path)
+	if err == nil {
+		return true, nil
+	}
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	return false, err
 }
